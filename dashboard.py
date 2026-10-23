@@ -1,7 +1,9 @@
-from kafka_config import kafka_config
 import json
+import threading
+import time
 import uuid
 from collections import defaultdict, deque
+from datetime import datetime
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -10,12 +12,14 @@ from confluent_kafka import Consumer
 from plotly.subplots import make_subplots
 from streamlit_autorefresh import st_autorefresh
 
+from kafka_config import kafka_config
+
 # ---------- Pengaturan ----------
-BOOTSTRAP = "localhost:9092"
 TOPIC_TICKS = "stock-ticks"
 TOPIC_ALERTS = "stock-alerts"
 WATCH = ["BBCA", "BBRI", "TLKM", "ASII", "GOTO"]
 MAX_TICKS = 3000
+RIWAYAT_DETIK = 600   # saat start, baca data 10 menit terakhir
 
 PANEL, LINE, MUTED = "#10151c", "#1e2630", "#7b8794"
 UP, DOWN, ACCENT = "#2de2c0", "#ff5c5c", "#e8a23a"
@@ -70,35 +74,58 @@ div[data-baseweb="select"]>div{background:var(--panel);border-color:var(--line);
 """, unsafe_allow_html=True)
 
 
-# ---------- Kafka ----------
-@st.cache_resource
-def siapkan():
-    """Dibuat sekali: consumer + penyimpanan data di memori."""
+# ---------- Kafka (satu consumer bersama, jalan di latar belakang) ----------
+def _baca_kafka(ticks, alerts, stats, lock):
+    def on_assign(c, partitions):
+        # mulai dari data 10 menit terakhir supaya dashboard langsung terisi
+        try:
+            t = int((time.time() - RIWAYAT_DETIK) * 1000)
+            for p in partitions:
+                p.offset = t
+            c.assign(c.offsets_for_times(partitions, timeout=10))
+        except Exception as e:
+            print("on_assign gagal, pakai default:", e)
+
     c = Consumer(kafka_config({
         "group.id": "dashboard-" + uuid.uuid4().hex[:6],
         "auto.offset.reset": "latest",
     }))
-    c.subscribe([TOPIC_TICKS, TOPIC_ALERTS])
+    c.subscribe([TOPIC_TICKS, TOPIC_ALERTS], on_assign=on_assign)
+    while True:
+        pesan = c.poll(1.0)
+        if pesan is None or pesan.error():
+            continue
+        try:
+            d = json.loads(pesan.value().decode("utf-8"))
+            if pesan.topic() == TOPIC_TICKS:
+                datetime.fromisoformat(d["timestamp"])   # tolak pesan uji
+                baris = (d["timestamp"], d["price"], d.get("volume", 0))
+                with lock:
+                    ticks[d["symbol"]].append(baris)
+                    stats["n"] += 1
+            else:
+                with lock:
+                    alerts.appendleft(d)
+        except Exception:
+            continue
+
+
+@st.cache_resource
+def siapkan():
+    """Dibuat sekali untuk SEMUA pengunjung."""
     ticks = defaultdict(lambda: deque(maxlen=MAX_TICKS))
     alerts = deque(maxlen=50)
     stats = {"n": 0}
-    return c, ticks, alerts, stats
+    lock = threading.Lock()
+    threading.Thread(target=_baca_kafka, args=(ticks, alerts, stats, lock),
+                     daemon=True).start()
+    return ticks, alerts, stats, lock
 
 
-consumer, ticks, alerts, stats = siapkan()
-
-for _ in range(2000):
-    pesan = consumer.poll(0.005)
-    if pesan is None:
-        break
-    if pesan.error():
-        continue
-    d = json.loads(pesan.value().decode("utf-8"))
-    if pesan.topic() == TOPIC_TICKS:
-        ticks[d["symbol"]].append((d["timestamp"], d["price"], d.get("volume", 0)))
-        stats["n"] += 1
-    else:
-        alerts.appendleft(d)
+_ticks, _alerts, stats, _lock = siapkan()
+with _lock:   # salinan aman untuk dibaca halaman ini
+    ticks = {s: list(d) for s, d in _ticks.items()}
+    alerts = list(_alerts)
 
 
 # ---------- Helper ----------
