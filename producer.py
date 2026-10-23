@@ -1,3 +1,4 @@
+from kafka_config import kafka_config
 from confluent_kafka import Producer
 import json
 import random
@@ -5,7 +6,7 @@ import time
 from datetime import datetime
 
 # Alamat Kafka (sudah kita buka lewat docker-compose)
-producer = Producer({"bootstrap.servers": "localhost:9092"})
+producer = Producer(kafka_config())
 
 TOPIC = "stock-ticks"
 

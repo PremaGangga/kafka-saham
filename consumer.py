@@ -1,17 +1,16 @@
+from kafka_config import kafka_config
 from confluent_kafka import Consumer, Producer
 from collections import defaultdict, deque
 import json
 
 # Pengaturan consumer (pembaca data)
-consumer = Consumer({
-    "bootstrap.servers": "localhost:9092",
-    "group.id": "analisis-saham",       # nama kelompok consumer
-    "auto.offset.reset": "earliest",    # mulai dari data paling awal
-})
+consumer = Consumer(kafka_config({
+    "group.id": "analisis-saham",
+    "auto.offset.reset": "earliest",
+}))
 consumer.subscribe(["stock-ticks"])
 
-# Producer untuk mengirim alert ke topic stock-alerts
-alert_producer = Producer({"bootstrap.servers": "localhost:9092"})
+alert_producer = Producer(kafka_config())
 
 # Simpan 10 harga terakhir tiap saham
 riwayat = defaultdict(lambda: deque(maxlen=10))

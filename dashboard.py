@@ -1,3 +1,4 @@
+from kafka_config import kafka_config
 import json
 import uuid
 from collections import defaultdict, deque
@@ -73,11 +74,10 @@ div[data-baseweb="select"]>div{background:var(--panel);border-color:var(--line);
 @st.cache_resource
 def siapkan():
     """Dibuat sekali: consumer + penyimpanan data di memori."""
-    c = Consumer({
-        "bootstrap.servers": BOOTSTRAP,
+    c = Consumer(kafka_config({
         "group.id": "dashboard-" + uuid.uuid4().hex[:6],
         "auto.offset.reset": "latest",
-    })
+    }))
     c.subscribe([TOPIC_TICKS, TOPIC_ALERTS])
     ticks = defaultdict(lambda: deque(maxlen=MAX_TICKS))
     alerts = deque(maxlen=50)
