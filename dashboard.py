@@ -17,7 +17,7 @@ from kafka_config import kafka_config
 # ---------- Pengaturan ----------
 TOPIC_TICKS = "stock-ticks"
 TOPIC_ALERTS = "stock-alerts"
-WATCH = ["BBCA", "BBRI", "TLKM", "ASII", "GOTO"]
+WATCH = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "BTC"]
 MAX_TICKS = 3000
 RIWAYAT_DETIK = 600   # saat start, baca data 10 menit terakhir
 
@@ -130,9 +130,11 @@ with _lock:   # salinan aman untuk dibaca halaman ini
 
 # ---------- Helper ----------
 def fmt(x):
-    if abs(x) >= 1000:
-        return f"{x:,.0f}"
-    return f"{x:,.2f}".rstrip("0").rstrip(".")
+    if abs(x) >= 10000:
+        return f"{x:,.0f}"       # BTC
+    if abs(x) >= 100:
+        return f"{x:,.2f}"       # USDJPY, XAUUSD
+    return f"{x:,.5f}"           # EURUSD, GBPUSD
 
 
 def to_df(sym):
@@ -222,7 +224,7 @@ def combo_fig(df, sym):
 
 # ---------- Tampilan ----------
 st.markdown(
-    f'<div class="head"><div class="title">Real-Time Stock Market Monitoring</div>'
+    f'<div class="head"><div class="title">Real-Time Forex Market Monitoring</div>'
     f'<div class="live"><span class="pulse"></span>Live, {stats["n"]:,} event diterima</div></div>',
     unsafe_allow_html=True)
 
@@ -263,7 +265,7 @@ with left:
                  f'<td class="{"up" if ch >= 0 else "down"}">{ch:+.2f}%</td>'
                  f'<td>{vol:,}</td></tr>')
     st.markdown(
-        '<div class="card"><div class="ctitle"><b>Volume Watchlist</b></div>'
+        '<div class="card"><div class="ctitle"><b>Watchlist (volume = jumlah tick)</b></div>'
         '<table class="wl"><thead><tr><th>Simbol</th><th>Harga</th><th>Chg</th><th>Volume</th></tr></thead>'
         f'<tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 

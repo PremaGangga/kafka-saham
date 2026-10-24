@@ -1,0 +1,34 @@
+name: Jalankan producer dan consumer
+
+on:
+  schedule:
+    # Cron memakai UTC. 06:30 UTC = 13:30 WIB, Senin sampai Jumat
+    - cron: "30 6 * * 1-5"
+  workflow_dispatch:   # tombol "Run workflow" untuk menjalankan manual
+
+jobs:
+  stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install library
+        run: pip install confluent-kafka python-dotenv websocket-client
+
+      - name: Jalankan producer dan consumer (2,5 jam)
+        env:
+          KAFKA_MODE: cloud
+          KAFKA_BOOTSTRAP: ${{ secrets.KAFKA_BOOTSTRAP }}
+          KAFKA_USER: ${{ secrets.KAFKA_USER }}
+          KAFKA_PASSWORD: ${{ secrets.KAFKA_PASSWORD }}
+          KAFKA_CA: ca.pem
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+        run: |
+          timeout 150m python -u producer_forex.py &
+          timeout 150m python -u consumer.py &
+          wait
