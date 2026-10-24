@@ -139,12 +139,18 @@ def fmt(x):
 
 def to_df(sym):
     df = pd.DataFrame(ticks[sym], columns=["time", "price", "volume"])
-    df["time"] = pd.to_datetime(df["time"])
+    df["time"] = pd.to_datetime(df["time"], format="ISO8601", errors="coerce")
+    df = df.dropna(subset=["time"])
     return df
 
 
-def change(df, n=60):
-    base = df["price"].iloc[max(0, len(df) - n - 1)]
+def window(df, detik=300):
+    """Data dalam N detik terakhir (default 5 menit)."""
+    return df[df["time"] >= df["time"].iloc[-1] - pd.Timedelta(seconds=detik)]
+
+
+def change(df, detik=300):
+    base = window(df, detik)["price"].iloc[0]
     return (df["price"].iloc[-1] / base - 1) * 100 if base else 0.0
 
 
@@ -234,6 +240,11 @@ if not symbols:
     st.stop()
 
 frames = {s: to_df(s) for s in symbols}
+frames = {s: d for s, d in frames.items() if len(d) > 0}
+symbols = [s for s in symbols if s in frames]
+if not symbols:
+    st.info("Menunggu data yang valid...")
+    st.stop()
 
 # Ticker bar
 items = ""
@@ -243,7 +254,7 @@ for s in symbols:
     cls, arrow = ("up", "▲") if ch >= 0 else ("down", "▼")
     items += (f'<div class="tk"><span class="dot"></span><span>{s}</span>'
               f'<span class="px">{fmt(df["price"].iloc[-1])}</span>'
-              f'<span class="{cls}">{arrow} {abs(ch):.2f}%</span></div>')
+              f'<span class="{cls}">{arrow} {abs(ch):.3f}%</span></div>')
 st.markdown(f'<div class="ticker">{items}</div>', unsafe_allow_html=True)
 
 # Baris utama: watchlist + candlestick
@@ -259,10 +270,10 @@ with left:
     for s in symbols:
         df = frames[s]
         ch = change(df)
-        vol = int(df["volume"].tail(60).sum())
+        vol = int(window(df)["volume"].sum())
         rows += (f'<tr class="{"sel" if s == sel else ""}"><td>{s}</td>'
                  f'<td>{fmt(df["price"].iloc[-1])}</td>'
-                 f'<td class="{"up" if ch >= 0 else "down"}">{ch:+.2f}%</td>'
+                 f'<td class="{"up" if ch >= 0 else "down"}">{ch:+.3f}%</td>'
                  f'<td>{vol:,}</td></tr>')
     st.markdown(
         '<div class="card"><div class="ctitle"><b>Watchlist (volume = jumlah tick)</b></div>'
@@ -278,12 +289,12 @@ st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
 cols = st.columns(len(symbols))
 for col, s in zip(cols, symbols):
     df = frames[s]
-    w = df.tail(60)
+    w = window(df)
     ch = change(df)
     cls, arrow = ("up", "▲") if ch >= 0 else ("down", "▼")
     col.markdown(
         f'<div class="card"><div class="ctitle">Ringkasan : <b>{s}</b></div>'
-        f'<div class="big">{fmt(df["price"].iloc[-1])}<span class="{cls}">{arrow} {abs(ch):.2f}%</span></div>'
+        f'<div class="big">{fmt(df["price"].iloc[-1])}<span class="{cls}">{arrow} {abs(ch):.3f}%</span></div>'
         f'{spark_svg(df["price"].tail(120), ch >= 0)}'
         f'<div class="kv"><span>Tertinggi</span><b>{fmt(w["price"].max())}</b></div>'
         f'<div class="kv"><span>Terendah</span><b>{fmt(w["price"].min())}</b></div>'
@@ -303,7 +314,7 @@ with bawah_kanan:
             cls = "up" if p > 0 else "down"
             baris += (f'<div class="al"><span class="badge {cls}">{"Naik" if p > 0 else "Turun"}</span>'
                       f'<b>{a.get("symbol", "")}</b><span>{fmt(a.get("price", 0))}</span>'
-                      f'<span class="{cls}">{p:+.2f}%</span>'
+                      f'<span class="{cls}">{p:+.3f}%</span>'
                       f'<span class="muted">{str(a.get("timestamp", ""))[11:19]}</span></div>')
     else:
         baris = '<div class="muted" style="font-size:12px;padding:8px 0;">Belum ada alert. Jalankan consumer.py.</div>'
