@@ -223,7 +223,7 @@ def combo_fig(df, sym):
                              line=dict(color=DOWN, width=1.8),
                              marker=dict(size=5, color="#ffffff"), name="Harga"),
                   secondary_y=True)
-    style(fig, f"Volume dan harga {sym} (per 10 detik)", 300)
+    style(fig, f"Volume dan Price {sym} (per 10 second)", 300)
     fig.update_yaxes(showgrid=False, secondary_y=True)
     return fig
 
@@ -231,7 +231,7 @@ def combo_fig(df, sym):
 # ---------- Tampilan ----------
 st.markdown(
     f'<div class="head"><div class="title">Real-Time Forex Market Monitoring</div>'
-    f'<div class="live"><span class="pulse"></span>Live, {stats["n"]:,} event diterima</div></div>',
+    f'<div class="live"><span class="pulse"></span>Live, {stats["n"]:,} event accepted</div></div>',
     unsafe_allow_html=True)
 
 symbols = [s for s in WATCH if s in ticks] or sorted(ticks)[:5]
@@ -261,7 +261,7 @@ st.markdown(f'<div class="ticker">{items}</div>', unsafe_allow_html=True)
 left, right = st.columns([1.3, 4])
 with right:
     c1, c2, _ = st.columns([1, 1, 3])
-    sel = c1.selectbox("Saham", symbols)
+    sel = c1.selectbox("Market", symbols)
     sec = c2.selectbox("Interval candle", [3, 5, 10, 30], index=1,
                        format_func=lambda x: f"{x} detik")
 
@@ -277,7 +277,7 @@ with left:
                  f'<td>{vol:,}</td></tr>')
     st.markdown(
         '<div class="card"><div class="ctitle"><b>Watchlist (volume = jumlah tick)</b></div>'
-        '<table class="wl"><thead><tr><th>Simbol</th><th>Harga</th><th>Chg</th><th>Volume</th></tr></thead>'
+        '<table class="wl"><thead><tr><th>Symbol</th><th>Price</th><th>Chg</th><th>Volume</th></tr></thead>'
         f'<tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
 with right:
@@ -293,11 +293,11 @@ for col, s in zip(cols, symbols):
     ch = change(df)
     cls, arrow = ("up", "▲") if ch >= 0 else ("down", "▼")
     col.markdown(
-        f'<div class="card"><div class="ctitle">Ringkasan : <b>{s}</b></div>'
+        f'<div class="card"><div class="ctitle">Summary : <b>{s}</b></div>'
         f'<div class="big">{fmt(df["price"].iloc[-1])}<span class="{cls}">{arrow} {abs(ch):.3f}%</span></div>'
         f'{spark_svg(df["price"].tail(120), ch >= 0)}'
-        f'<div class="kv"><span>Tertinggi</span><b>{fmt(w["price"].max())}</b></div>'
-        f'<div class="kv"><span>Terendah</span><b>{fmt(w["price"].min())}</b></div>'
+        f'<div class="kv"><span>Highest</span><b>{fmt(w["price"].max())}</b></div>'
+        f'<div class="kv"><span>Lowest</span><b>{fmt(w["price"].min())}</b></div>'
         f'<div class="kv"><span>Volume</span><b>{int(w["volume"].sum()):,}</b></div></div>',
         unsafe_allow_html=True)
 
@@ -317,6 +317,6 @@ with bawah_kanan:
                       f'<span class="{cls}">{p:+.3f}%</span>'
                       f'<span class="muted">{str(a.get("timestamp", ""))[11:19]}</span></div>')
     else:
-        baris = '<div class="muted" style="font-size:12px;padding:8px 0;">Belum ada alert. Jalankan consumer.py.</div>'
-    st.markdown(f'<div class="card"><div class="ctitle"><b>Alert terbaru</b></div>{baris}</div>',
+        baris = '<div class="muted" style="font-size:12px;padding:8px 0;">No alerts yet.</div>'
+    st.markdown(f'<div class="card"><div class="ctitle"><b>New Alert</b></div>{baris}</div>',
                 unsafe_allow_html=True)
