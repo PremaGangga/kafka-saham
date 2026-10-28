@@ -276,7 +276,7 @@ with left:
                  f'<td class="{"up" if ch >= 0 else "down"}">{ch:+.3f}%</td>'
                  f'<td>{vol:,}</td></tr>')
     st.markdown(
-        '<div class="card"><div class="ctitle"><b>Watchlist (volume = jumlah tick)</b></div>'
+        '<div class="card"><div class="ctitle"><b>Watchlist (volume = number of ticks)</b></div>'
         '<table class="wl"><thead><tr><th>Symbol</th><th>Price</th><th>Chg</th><th>Volume</th></tr></thead>'
         f'<tbody>{rows}</tbody></table></div>', unsafe_allow_html=True)
 
@@ -312,7 +312,7 @@ with bawah_kanan:
         for a in list(alerts)[:8]:
             p = a.get("change_percent", 0)
             cls = "up" if p > 0 else "down"
-            baris += (f'<div class="al"><span class="badge {cls}">{"Naik" if p > 0 else "Turun"}</span>'
+            baris += (f'<div class="al"><span class="badge {cls}">{"Up" if p > 0 else "Down"}</span>'
                       f'<b>{a.get("symbol", "")}</b><span>{fmt(a.get("price", 0))}</span>'
                       f'<span class="{cls}">{p:+.3f}%</span>'
                       f'<span class="muted">{str(a.get("timestamp", ""))[11:19]}</span></div>')
